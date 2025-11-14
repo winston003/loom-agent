@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/roi-tool.schema.json",
+  "title": "ROI Tool Contracts",
+  "type": "object",
+  "properties": {
+    "single": {
+      "type": "object",
+      "properties": {
+        "cost": { "type": "number", "exclusiveMinimum": 0 },
+        "revenue": { "type": "number" },
+        "mode": { "type": "string", "enum": ["product", "demo", "r&d", "dev"] },
+        "output": { "type": "string", "enum": ["structured", "text"] },
+        "precision_ratio": { "type": "integer", "minimum": 0, "default": 4 },
+        "precision_percentage": { "type": "integer", "minimum": 0, "default": 2 }
+      },
+      "required": ["cost", "revenue"],
+      "additionalProperties": false
+    },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/properties/single" }
+        },
+        "mode": { "type": "string", "enum": ["product", "demo", "r&d", "dev"] },
+        "output": { "type": "string", "enum": ["structured", "text"] }
+      },
+      "required": ["items"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["single"],
+  "additionalProperties": false
+}
