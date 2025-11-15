@@ -56,6 +56,14 @@ psutil = {version = "^5.9.0", optional = true}
 docker = {version = "^7.0.0", optional = true}
 mcp = {version = "^0.2.0", optional = true}
 
+# Audio adapter dependencies (for voice interaction)
+torch = {version = "2.2.2", optional = true}
+silero-vad = {version = "5.1.2", optional = true}
+funasr = {version = "1.2.3", optional = true}
+edge-tts = {version = "7.0.0", optional = true}
+opuslib = {version = "1.1.2", optional = true}
+cryptography = {version = "^42.0.0", optional = true}
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-asyncio = "^0.21.0"
@@ -95,6 +103,7 @@ web = ["fastapi", "uvicorn", "websockets"]
 system = ["psutil", "docker"]
 mcp = ["mcp"]
 observability = ["structlog", "cachetools"]
+audio = ["torch", "silero-vad", "funasr", "edge-tts", "opuslib", "cryptography", "websockets", "numpy"]
 all = [
   "openai",
   "anthropic",
@@ -111,4 +120,10 @@ all = [
   "cachetools",
   "weakref-tools",
   "asyncio-throttle",
+  "torch",
+  "silero-vad",
+  "funasr",
+  "edge-tts",
+  "opuslib",
+  "cryptography",
 ]

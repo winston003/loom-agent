@@ -1,0 +1,51 @@
+{
+  "_comment": "Audio adapter permission configuration (T066)",
+  "_description": "This file defines speaker roles and operation sensitivity levels for voiceprint-based access control",
+  
+  "owner_speaker_ids": [
+    "speaker_001"
+  ],
+  
+  "guest_speaker_ids": [
+    "speaker_002",
+    "speaker_003"
+  ],
+  
+  "sensitive_operations": {
+    "_comment_critical": "Critical operations require owner role + two-factor confirmation",
+    "unlock_door": "critical",
+    "delete_photos": "critical",
+    "delete_all_data": "critical",
+    "authorize_third_party": "critical",
+    "change_password": "critical",
+    "transfer_money": "critical",
+    "reset_device": "critical",
+    "format_storage": "critical",
+    
+    "_comment_medium": "Medium operations require voiceprint verification (owner or guest)",
+    "turn_off_lights": "medium",
+    "turn_off_all_lights": "medium",
+    "send_message": "medium",
+    "read_messages": "medium",
+    "view_calendar": "medium",
+    "open_calendar": "medium",
+    "play_private_photos": "medium",
+    "adjust_temperature": "medium",
+    "stop_alarm": "medium",
+    "control_critical_devices": "medium",
+    
+    "_comment_low": "Low operations require no verification (public access)",
+    "get_weather": "low",
+    "get_news": "low",
+    "get_time": "low",
+    "play_music": "low",
+    "set_reminder": "low",
+    "adjust_volume": "low",
+    "get_date": "low",
+    "tell_joke": "low"
+  },
+  
+  "default_sensitivity": "medium",
+  
+  "_usage": "Copy this file to ~/.loom/audio_config.json and customize speaker IDs and operations"
+}

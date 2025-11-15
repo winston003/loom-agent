@@ -215,3 +215,5 @@ testpypi-*/
 verify-*/
 
 cc分析/
+migration
+#.github

@@ -7,6 +7,7 @@ Features:
 - JSON format for log aggregation tools (Datadog, CloudWatch, etc.)
 - Context propagation
 - Performance metrics
+- Audio module support (VAD, ASR, TTS, Voiceprint, WebSocket)
 """
 
 from __future__ import annotations
@@ -181,13 +182,41 @@ class StructuredLogger:
             operation: Operation name
             duration_ms: Duration in milliseconds
             success: Whether operation succeeded
-            **kwargs: Additional metrics
+            **kwargs: Additional metrics (e.g., audio_duration_ms, chunk_size)
         """
         self.info(
             "Performance metric",
             operation=operation,
             duration_ms=duration_ms,
             success=success,
+            **kwargs,
+        )
+
+    def log_audio_event(
+        self,
+        event_type: str,
+        session_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Log audio-specific events.
+
+        Args:
+            event_type: Audio event type (e.g., 'vad_speech_detected', 'asr_transcribed')
+            session_id: Audio session ID
+            **kwargs: Additional event data
+
+        Example:
+            logger.log_audio_event(
+                "vad_speech_detected",
+                session_id="session-123",
+                duration_ms=1500,
+                confidence=0.95
+            )
+        """
+        self.info(
+            f"Audio event: {event_type}",
+            event_type=event_type,
+            session_id=session_id,
             **kwargs,
         )
 
@@ -257,10 +286,18 @@ def get_logger(name: str = "loom") -> StructuredLogger:
     """Get or create a structured logger.
 
     Args:
-        name: Logger name
+        name: Logger name (supports audio module tags like 'audio.vad', 'audio.asr')
 
     Returns:
         StructuredLogger instance
+
+    Example:
+        # Audio module loggers
+        vad_logger = get_logger("audio.vad")
+        asr_logger = get_logger("audio.asr")
+        tts_logger = get_logger("audio.tts")
+        vp_logger = get_logger("audio.voiceprint")
+        ws_logger = get_logger("audio.websocket")
     """
     return StructuredLogger(name)
 

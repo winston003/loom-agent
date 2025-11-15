@@ -139,6 +139,13 @@ class AgentEventType(Enum):
     RECOVERY_FAILED = "recovery_failed"
     """Error recovery failed"""
 
+    # ===== Audio Events (Xiaozhi Voice Adapter) =====
+    AUDIO_SESSION_START = "audio_session_start"
+    """Audio session started (voice interaction initiated)"""
+
+    AUDIO_SESSION_END = "audio_session_end"
+    """Audio session ended (voice interaction completed)"""
+
 
 @dataclass
 class ToolCall:
