@@ -10,7 +10,7 @@ from loom.protocol.memory_operations import MemoryValidator
 # For now we'll accept an LLMProvider in init
 
 class HeuristicValueAssessor(MemoryValidator):
-    def __init__(self, key_terms: list[str] = None):
+    def __init__(self, key_terms: list[str] | None = None):
         self.key_terms = key_terms or ["goal", "error", "result", "important", "decision"]
 
     async def validate(self, content: Any) -> float:

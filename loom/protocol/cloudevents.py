@@ -47,9 +47,15 @@ class CloudEvent(BaseModel):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        json_encoders={datetime: lambda v: v.isoformat()},
         extra='allow'
     )
+
+    def model_dump(self, **kwargs):
+        """Override model_dump to handle datetime serialization."""
+        data = super().model_dump(**kwargs)
+        if 'time' in data and isinstance(data['time'], datetime):
+            data['time'] = data['time'].isoformat()
+        return data
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to standard CloudEvents dictionary structure."""
