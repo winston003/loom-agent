@@ -50,7 +50,7 @@ class CloudEvent(BaseModel):
         extra='allow'
     )
 
-    def model_dump(self, **kwargs):
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override model_dump to handle datetime serialization."""
         data = super().model_dump(**kwargs)
         if 'time' in data and isinstance(data['time'], datetime):
