@@ -17,6 +17,7 @@ This ensures:
 
 import asyncio
 from typing import Optional, List
+import pytest
 from loom.api.main import LoomApp
 from loom.protocol.cloudevents import CloudEvent
 from loom.kernel.base_interceptor import Interceptor
@@ -60,6 +61,7 @@ class EventCaptureInterceptor(Interceptor):
         return self.event_types.copy()
 
 
+@pytest.mark.asyncio
 async def test_crew_event_flow():
     """
     Test that CrewNode -> AgentNode calls go through event bus.
@@ -131,6 +133,7 @@ async def test_crew_event_flow():
     return result
 
 
+@pytest.mark.asyncio
 async def test_agent_tool_event_flow():
     """
     Test that AgentNode -> ToolNode calls go through event bus.
@@ -207,6 +210,7 @@ async def test_agent_tool_event_flow():
     return result
 
 
+@pytest.mark.asyncio
 async def test_nested_crew_event_flow():
     """
     Test nested Crew (fractal composition).
