@@ -3,9 +3,9 @@ Event Store Interface
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
 
 from loom.protocol.cloudevents import CloudEvent
+
 
 class EventStore(ABC):
     """
@@ -21,7 +21,7 @@ class EventStore(ABC):
         pass
 
     @abstractmethod
-    async def get_events(self, limit: int = 100, offset: int = 0, **filters) -> List[CloudEvent]:
+    async def get_events(self, limit: int = 100, offset: int = 0, **filters) -> list[CloudEvent]:
         """
         Retrieve events with optional filtering.
         Filters can match on standard CloudEvent attributes (source, type, etc.)

@@ -16,14 +16,16 @@ This ensures:
 """
 
 import asyncio
-from typing import Optional, List
+
+import pytest
+
 from loom.api.main import LoomApp
-from loom.protocol.cloudevents import CloudEvent
+from loom.infra.llm import MockLLMProvider
 from loom.kernel.base_interceptor import Interceptor
 from loom.node.agent import AgentNode
-from loom.node.tool import ToolNode
 from loom.node.crew import CrewNode
-from loom.infra.llm import MockLLMProvider
+from loom.node.tool import ToolNode
+from loom.protocol.cloudevents import CloudEvent
 
 
 class EventCaptureInterceptor(Interceptor):
@@ -33,10 +35,10 @@ class EventCaptureInterceptor(Interceptor):
     """
 
     def __init__(self):
-        self.captured_events: List[CloudEvent] = []
-        self.event_types: List[str] = []
+        self.captured_events: list[CloudEvent] = []
+        self.event_types: list[str] = []
 
-    async def pre_invoke(self, event: CloudEvent) -> Optional[CloudEvent]:
+    async def pre_invoke(self, event: CloudEvent) -> CloudEvent | None:
         """Capture event before processing."""
         self.captured_events.append(event)
         self.event_types.append(event.type)
@@ -55,11 +57,12 @@ class EventCaptureInterceptor(Interceptor):
         """Count occurrences of an event type."""
         return self.event_types.count(event_type)
 
-    def get_event_chain(self) -> List[str]:
+    def get_event_chain(self) -> list[str]:
         """Get the chain of event types."""
         return self.event_types.copy()
 
 
+@pytest.mark.asyncio
 async def test_crew_event_flow():
     """
     Test that CrewNode -> AgentNode calls go through event bus.
@@ -131,6 +134,7 @@ async def test_crew_event_flow():
     return result
 
 
+@pytest.mark.asyncio
 async def test_agent_tool_event_flow():
     """
     Test that AgentNode -> ToolNode calls go through event bus.
@@ -207,6 +211,7 @@ async def test_agent_tool_event_flow():
     return result
 
 
+@pytest.mark.asyncio
 async def test_nested_crew_event_flow():
     """
     Test nested Crew (fractal composition).
@@ -236,7 +241,7 @@ async def test_nested_crew_event_flow():
     agent3 = AgentNode("agent-3", app.dispatcher, provider=MockLLMProvider())
 
     # Create sub-crew
-    sub_crew = CrewNode(
+    CrewNode(
         node_id="sub-crew-1",
         dispatcher=app.dispatcher,
         agents=[agent1, agent2],
@@ -255,7 +260,7 @@ async def test_nested_crew_event_flow():
 
     # Run task
     await app.start()
-    result = await app.run("Nested task", target=master_crew.source_uri)
+    await app.run("Nested task", target=master_crew.source_uri)
 
     # Verify
     print("\n--- Event Chain ---")

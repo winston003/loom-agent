@@ -3,18 +3,22 @@ LLM Provider Interface
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
+
 from pydantic import BaseModel
+
+from loom.protocol.interfaces import LLMProviderProtocol
+
 
 class LLMResponse(BaseModel):
     """
     Standardized response from an LLM.
     """
     content: str
-    tool_calls: List[Dict[str, Any]] = []
-    token_usage: Optional[Dict[str, int]] = None
-    
-from loom.protocol.interfaces import LLMProviderProtocol
+    tool_calls: list[dict[str, Any]] = []
+    token_usage: dict[str, int] | None = None
+
 
 class LLMProvider(LLMProviderProtocol, ABC):
     """
@@ -23,10 +27,10 @@ class LLMProvider(LLMProviderProtocol, ABC):
 
     @abstractmethod
     async def chat(
-        self, 
-        messages: List[Dict[str, Any]], 
-        tools: Optional[List[Dict[str, Any]]] = None,
-        config: Optional[Dict[str, Any]] = None
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        config: dict[str, Any] | None = None
     ) -> LLMResponse:
         """
         Generate a response for a given chat history.
@@ -36,8 +40,8 @@ class LLMProvider(LLMProviderProtocol, ABC):
     @abstractmethod
     async def stream_chat(
         self,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None
     ) -> AsyncIterator[str]:
         """
         Stream the response content.

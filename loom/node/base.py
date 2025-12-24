@@ -4,23 +4,24 @@ Base Node Abstraction (Fractal System)
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
-from loom.protocol.cloudevents import CloudEvent
 from loom.kernel.dispatcher import Dispatcher
+from loom.protocol.cloudevents import CloudEvent
+
 
 class Node(ABC):
     """
     Abstract Base Class for all Fractal Nodes (Agent, Tool, Crew).
     Implements standard event subscription and request handling.
     """
-    
+
     def __init__(self, node_id: str, dispatcher: Dispatcher):
         self.node_id = node_id
         self.dispatcher = dispatcher
         self.source_uri = f"/node/{node_id}" # Standard URI
-        
+
         # Auto-subscribe to my requests
         asyncio.create_task(self._subscribe_to_events())
 
@@ -38,7 +39,7 @@ class Node(ABC):
         try:
             # 1. Process
             result = await self.process(event)
-            
+
             # 2. Respond
             response_event = CloudEvent.create(
                 source=self.source_uri,
@@ -52,10 +53,10 @@ class Node(ABC):
             # Response topic usually goes to whoever asked, or open bus
             # In request-reply pattern, typically we might just publish it
             # and the caller subscribes to node.response/originator
-            
+
             # For now, just generic publish
             await self.dispatcher.dispatch(response_event)
-            
+
         except Exception as e:
             error_event = CloudEvent.create(
                 source=self.source_uri,
@@ -68,7 +69,7 @@ class Node(ABC):
             )
             await self.dispatcher.dispatch(error_event)
 
-    async def call(self, target_node: str, data: Dict[str, Any]) -> Any:
+    async def call(self, target_node: str, data: dict[str, Any]) -> Any:
         """
         Call another node and wait for response.
 
@@ -89,12 +90,11 @@ class Node(ABC):
         response_future = asyncio.Future()
 
         async def handle_response(event: CloudEvent):
-            if event.data and event.data.get("request_id") == request_id:
-                if not response_future.done():
-                    if event.type == "node.error":
-                         response_future.set_exception(Exception(event.data.get("error", "Unknown Error")))
-                    else:
-                         response_future.set_result(event.data.get("result"))
+            if event.data and event.data.get("request_id") == request_id and not response_future.done():
+                if event.type == "node.error":
+                    response_future.set_exception(Exception(event.data.get("error", "Unknown Error")))
+                else:
+                    response_future.set_result(event.data.get("result"))
 
         # Topic: node.response/{target_node}
         # Note: clean URI

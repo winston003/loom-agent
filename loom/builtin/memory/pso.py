@@ -2,32 +2,34 @@
 Project State Object (PSO) Implementation.
 """
 
-from typing import Any, Dict, List
+from typing import Any
+
 from loom.protocol.memory_operations import ProjectStateObject
+
 
 class SimplePSO(ProjectStateObject):
     def __init__(self):
-        self.state: Dict[str, Any] = {
+        self.state: dict[str, Any] = {
             "goals": [],
             "completed_tasks": [],
             "current_context": "",
             "variables": {}
         }
-        
-    async def update(self, events: List[Dict[str, Any]]) -> None:
+
+    async def update(self, events: list[dict[str, Any]]) -> None:
         """
         Update state based on heuristic interpretation of events.
         """
         for event in events:
             role = event.get("role")
             content = event.get("content", "")
-            
+
             if role == "user" and ("task" in content.lower() or "goal" in content.lower()):
                 self.state["goals"].append(content)
             elif role == "tool" and "result" in str(content).lower():
                 self.state["completed_tasks"].append(str(content)[:100])
-                
-    async def snapshot(self) -> Dict[str, Any]:
+
+    async def snapshot(self) -> dict[str, Any]:
         return self.state.copy()
 
     def to_markdown(self) -> str:

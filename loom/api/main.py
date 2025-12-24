@@ -3,58 +3,60 @@ Loom SDK: Main Application
 """
 
 import asyncio
-from typing import Callable, Any, Optional, Dict
+import contextlib
+from collections.abc import Callable
+from typing import Any
 from uuid import uuid4
 
+from loom.interfaces.store import EventStore
+from loom.interfaces.transport import Transport
 from loom.kernel.bus import UniversalEventBus
-from loom.kernel.state import StateStore
 from loom.kernel.dispatcher import Dispatcher
 from loom.kernel.interceptors import TracingInterceptor
 from loom.kernel.interceptors.budget import BudgetInterceptor
 from loom.kernel.interceptors.depth import DepthInterceptor
 from loom.kernel.interceptors.hitl import HITLInterceptor
 from loom.kernel.interceptors.studio import StudioInterceptor
-from loom.protocol.cloudevents import CloudEvent
-from loom.interfaces.store import EventStore
+from loom.kernel.state import StateStore
 from loom.node.base import Node
+from loom.protocol.cloudevents import CloudEvent
 
-from loom.interfaces.transport import Transport
 
 class LoomApp:
     """
     The High-Level Application Object.
-    
+
     Usage:
         app = LoomApp(control_config={"budget": 5000})
         app.add_node(agent)
         app.run("Do something", target="agent_1")
     """
-    
-    def __init__(self, 
-                 store: Optional[EventStore] = None, 
-                 transport: Optional[Transport] = None,
-                 control_config: Optional[Dict[str, Any]] = None):
-        
+
+    def __init__(self,
+                 store: EventStore | None = None,
+                 transport: Transport | None = None,
+                 control_config: dict[str, Any] | None = None):
+
         control_config = control_config or {}
 
         if "transport" in control_config and isinstance(control_config["transport"], dict):
              # Config dict provided, maybe future extensibility
              pass
-        
+
         # Transport Selection
         # 1. Transport object passed directly
         self.transport = transport
-        
+
         if not self.transport:
             # Config from control_config or Env
             transport_cfg = {}
             if "transport" in control_config and isinstance(control_config["transport"], dict):
                 transport_cfg = control_config["transport"]
-            
+
             import os
             # Priority: Config > Env > Default
             transport_type = transport_cfg.get("type") or os.getenv("LOOM_TRANSPORT", "memory").lower()
-            
+
             if transport_type == "redis":
                 from loom.infra.transport.redis import RedisTransport
                 redis_url = transport_cfg.get("redis_url") or os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -70,27 +72,27 @@ class LoomApp:
             else:
                 from loom.infra.transport.memory import InMemoryTransport
                 self.transport = InMemoryTransport()
-                
+
         self.bus = UniversalEventBus(store=store, transport=self.transport)
         self.state_store = StateStore()
         self.dispatcher = Dispatcher(self.bus)
-        
+
         # Default Interceptors
         self.dispatcher.add_interceptor(TracingInterceptor())
-        
+
         # Configured Controls
         control_config = control_config or {}
-        
+
         if "budget" in control_config:
             cfg = control_config["budget"]
             max_tokens = cfg["max_tokens"] if isinstance(cfg, dict) else cfg
             self.dispatcher.add_interceptor(BudgetInterceptor(max_tokens=max_tokens))
-            
+
         if "depth" in control_config:
             cfg = control_config["depth"]
             max_depth = cfg["max_depth"] if isinstance(cfg, dict) else cfg
             self.dispatcher.add_interceptor(DepthInterceptor(max_depth=max_depth))
-            
+
         if "hitl" in control_config:
             # hitl expects a list of patterns
             patterns = control_config["hitl"]
@@ -102,7 +104,7 @@ class LoomApp:
         # Check env var or control_config
         studio_enabled = False
         studio_url = "ws://localhost:8765"
-        
+
         if "studio" in control_config:
              studio_cfg = control_config["studio"]
              if isinstance(studio_cfg, dict):
@@ -115,17 +117,17 @@ class LoomApp:
              if os.getenv("LOOM_STUDIO_ENABLED", "false").lower() == "true":
                  studio_enabled = True
                  studio_url = os.getenv("LOOM_STUDIO_URL", studio_url)
-                 
+
         if studio_enabled:
             self.dispatcher.add_interceptor(StudioInterceptor(studio_url=studio_url, enabled=True))
-        
+
         self._started = False
-        
+
     async def start(self):
         """Initialize async components."""
         if self._started:
             return
-        
+
         await self.bus.connect()
         await self.bus.subscribe("state.patch/*", self.state_store.apply_event)
         self._started = True
@@ -143,7 +145,7 @@ class LoomApp:
         Run a single task targeting a specific node and return the result.
         """
         await self.start()
-        
+
         request_id = str(uuid4())
         event = CloudEvent.create(
             source="/user/sdk",
@@ -152,36 +154,33 @@ class LoomApp:
             subject=target
         )
         event.id = request_id
-        
+
         # Subscribe to response
         response_future = asyncio.Future()
-        
+
         async def handle_response(event: CloudEvent):
-            if event.data and event.data.get("request_id") == request_id:
-                if not response_future.done():
-                    if event.type == "node.error":
-                         response_future.set_exception(Exception(event.data.get("error", "Unknown Error")))
-                    else:
-                         response_future.set_result(event.data.get("result"))
+            if event.data and event.data.get("request_id") == request_id and not response_future.done():
+                if event.type == "node.error":
+                    response_future.set_exception(Exception(event.data.get("error", "Unknown Error")))
+                else:
+                    response_future.set_result(event.data.get("result"))
 
         target_topic = f"node.response/{target.strip('/')}"
-        
+
         # We need to subscribe to the response
         await self.bus.subscribe(target_topic, handle_response)
-        
+
         try:
             await self.dispatcher.dispatch(event)
-            
+
             # Use timeout from event if set (injected by interceptor)
             timeout = 30.0
             if event.extensions and "timeout" in event.extensions:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     timeout = float(event.extensions["timeout"])
-                except (ValueError, TypeError):
-                    pass
-            
+
             return await asyncio.wait_for(response_future, timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise TimeoutError(f"Task targeting {target} timed out after {timeout}s")
 
     def on(self, event_type: str, handler: Callable[[CloudEvent], Any]):
@@ -193,7 +192,7 @@ class LoomApp:
                 res = handler(event)
                 if asyncio.iscoroutine(res):
                     await res
-        
+
         # We subscribe to the bus
         # This requires an async context to call 'await bus.subscribe'.
         # We can schedule it.

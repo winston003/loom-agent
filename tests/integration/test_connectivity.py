@@ -2,18 +2,18 @@
 Integration Test: Connectivity
 """
 
+
 import pytest
-from typing import List
 
 from loom.api.main import LoomApp
-from loom.api.factory import Agent
-from loom.protocol.cloudevents import CloudEvent
 from loom.interfaces.transport import Transport
+from loom.protocol.cloudevents import CloudEvent
+
 
 class SpyTransport(Transport):
     def __init__(self) -> None:
-        self.events: List[CloudEvent] = []
-        
+        self.events: list[CloudEvent] = []
+
     async def connect(self) -> None:
         pass
 
@@ -31,7 +31,7 @@ async def test_custom_transport_injection():
     """Verify that LoomApp uses the injected transport."""
     spy = SpyTransport()
     app = LoomApp(transport=spy)
-    
+
     # Run a simple request physically via dispatcher to verify transport usage
     # We bypass app.run() because app.run() waits for a response that SpyTransport won't deliver.
     event = CloudEvent.create(
@@ -40,9 +40,9 @@ async def test_custom_transport_injection():
         data={"task": "hello"},
         subject="node/test_agent"
     )
-    
+
     await app.dispatcher.dispatch(event)
-    
+
     # Check spy
     assert len(spy.events) > 0
     # First event should be the request
