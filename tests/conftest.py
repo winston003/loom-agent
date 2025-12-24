@@ -2,15 +2,15 @@
 Pytest Configuration and Fixtures
 """
 
-import pytest
 import shutil
 import tempfile
-import os
-from typing import Generator
+from collections.abc import Generator
+
+import pytest
 
 from loom.api.main import LoomApp
 from loom.infra.llm import MockLLMProvider
-from loom.memory.hierarchical import HierarchicalMemory
+
 
 @pytest.fixture
 def app() -> LoomApp:

@@ -3,7 +3,8 @@ Transport Interface (Connectivity Layer)
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
+
 from loom.protocol.cloudevents import CloudEvent
 
 EventHandler = Callable[[CloudEvent], Awaitable[None]]

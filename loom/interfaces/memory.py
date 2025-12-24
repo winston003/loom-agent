@@ -3,8 +3,12 @@ Memory Interface
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
+
+from loom.protocol.interfaces import MemoryStrategy
+
 
 class MemoryEntry(BaseModel):
     """
@@ -13,18 +17,17 @@ class MemoryEntry(BaseModel):
     role: str
     content: str
     timestamp: float = Field(default_factory=lambda: __import__("time").time())
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     tier: str = "session"  # ephemeral, working, session, longterm
 
-from loom.protocol.interfaces import MemoryStrategy
 
 class MemoryInterface(MemoryStrategy, ABC):
     """
     Abstract Base Class for Agent Memory.
     """
-    
+
     @abstractmethod
-    async def add(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def add(self, role: str, content: str, metadata: dict[str, Any] | None = None) -> None:
         """Add a memory entry."""
         pass
 
@@ -35,9 +38,9 @@ class MemoryInterface(MemoryStrategy, ABC):
         May involve retrieval relevant to the 'task'.
         """
         pass
-        
+
     @abstractmethod
-    async def get_recent(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_recent(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get recent memory entries as a list of dicts (role/content).
         Useful for Chat History.

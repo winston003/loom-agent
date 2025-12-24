@@ -2,15 +2,17 @@
 测试消息历史格式是否符合 OpenAI API 要求
 """
 
-import pytest
 import asyncio
+
+import pytest
+
+from loom.api.main import LoomApp
+from loom.interfaces.llm import LLMProvider, LLMResponse
+from loom.memory.hierarchical import HierarchicalMemory
 from loom.node.agent import AgentNode
 from loom.node.tool import ToolNode
-from loom.api.main import LoomApp
 from loom.protocol.cloudevents import CloudEvent
-from loom.interfaces.llm import LLMProvider, LLMResponse
 from loom.protocol.mcp import MCPToolDefinition as ToolDefinition
-from loom.memory.hierarchical import HierarchicalMemory
 
 
 class MockLLMWithToolCall(LLMProvider):
@@ -63,7 +65,7 @@ async def test_message_format_with_tool_calls():
         node_id="test_tool",
         dispatcher=app.dispatcher,
         tool_def=tool_def,
-        func=lambda x: "success"
+        func=lambda _: "success"
     )
 
     # 创建内存和agent

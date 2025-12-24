@@ -2,20 +2,18 @@
 Agent Node (Fractal System)
 """
 
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, field
-import uuid
+from dataclasses import dataclass
+from typing import Any
 
-from loom.protocol.cloudevents import CloudEvent
-from loom.protocol.interfaces import ReflectiveMemoryStrategy
+from loom.infra.llm import MockLLMProvider
+from loom.interfaces.llm import LLMProvider
+from loom.interfaces.memory import MemoryInterface
+from loom.kernel.dispatcher import Dispatcher
+from loom.memory.hierarchical import HierarchicalMemory
 from loom.node.base import Node
 from loom.node.tool import ToolNode
-from loom.kernel.dispatcher import Dispatcher
-
-from loom.interfaces.llm import LLMProvider
-from loom.infra.llm import MockLLMProvider
-from loom.interfaces.memory import MemoryInterface
-from loom.memory.hierarchical import HierarchicalMemory
+from loom.protocol.cloudevents import CloudEvent
+from loom.protocol.interfaces import ReflectiveMemoryStrategy
 
 
 @dataclass
@@ -57,11 +55,11 @@ class AgentNode(Node):
         dispatcher: Dispatcher,
         role: str = "Assistant",
         system_prompt: str = "You are a helpful assistant.",
-        tools: Optional[List[ToolNode]] = None,
-        provider: Optional[LLMProvider] = None,
-        memory: Optional[MemoryInterface] = None,
+        tools: list[ToolNode] | None = None,
+        provider: LLMProvider | None = None,
+        memory: MemoryInterface | None = None,
         enable_auto_reflection: bool = False,
-        reflection_config: Optional[ReflectionConfig] = None
+        reflection_config: ReflectionConfig | None = None
     ):
         super().__init__(node_id, dispatcher)
         self.role = role
@@ -144,7 +142,7 @@ class AgentNode(Node):
         # Hook: Auto Reflection
         if self.enable_auto_reflection:
              await self._perform_reflection()
-             
+
         return await self._execute_loop(event)
 
     async def _execute_loop(self, event: CloudEvent) -> Any:
@@ -153,29 +151,29 @@ class AgentNode(Node):
         """
         task = event.data.get("task", "") or event.data.get("content", "")
         max_iterations = event.data.get("max_iterations", 5)
-        
+
         # 1. Perceive (Add to Memory)
         await self.memory.add("user", task)
-        
+
         iterations = 0
         final_response = ""
-        
+
         while iterations < max_iterations:
             iterations += 1
-            
+
             # 2. Recall (Get Context)
             history = await self.memory.get_recent(limit=20)
             messages = [{"role": "system", "content": self.system_prompt}] + history
-            
+
             # 3. Think
             mcp_tools = [t.tool_def.model_dump() for t in self.known_tools.values()]
-            
+
             # Check for Adaptive Control Overrides (from Interceptors)
             llm_config = event.extensions.get("llm_config_override")
-            
+
             response = await self.provider.chat(messages, tools=mcp_tools, config=llm_config)
             final_text = response.content
-            
+
             # 4. Act (Tool Usage or Final Answer)
             if response.tool_calls:
                 # Record the "thought" / call intent
@@ -183,12 +181,12 @@ class AgentNode(Node):
                 await self.memory.add("assistant", final_text or "", metadata={
                     "tool_calls": response.tool_calls
                 })
-                
+
                 # Execute tools (Parallel support possible, here sequential)
                 for tc in response.tool_calls:
                     tc_name = tc.get("name")
                     tc_args = tc.get("arguments")
-                    
+
                     # Emit thought event
                     await self.dispatcher.dispatch(CloudEvent.create(
                         source=self.source_uri,
@@ -196,7 +194,7 @@ class AgentNode(Node):
                         data={"thought": f"Calling {tc_name}", "tool_call": tc},
                         traceparent=event.traceparent
                     ))
-                    
+
                     target_tool = self.known_tools.get(tc_name)
 
                     if target_tool:
@@ -230,20 +228,20 @@ class AgentNode(Node):
                     else:
                         err_msg = f"Tool {tc_name} not found."
                         await self.memory.add("system", err_msg)
-                
+
                 # Loop continues to reflect on tool results
                 continue
-            
+
             else:
                 # Final Answer
                 await self.memory.add("assistant", final_text)
                 final_response = final_text
                 break
-        
+
         if not final_response and iterations >= max_iterations:
              final_response = "Error: Maximum iterations reached without final answer."
              await self.memory.add("system", final_response)
-             
+
         # Hook: Check reflection after new memories added
         if self.enable_auto_reflection:
              await self._perform_reflection()

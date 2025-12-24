@@ -1,8 +1,9 @@
-from .timeout import TimeoutInterceptor
+from loom.kernel.base_interceptor import TracingInterceptor
+
 from .budget import BudgetInterceptor
 from .depth import DepthInterceptor
 from .hitl import HITLInterceptor
-from loom.kernel.base_interceptor import TracingInterceptor
+from .timeout import TimeoutInterceptor
 
 __all__ = [
     "TimeoutInterceptor",
